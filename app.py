@@ -10,6 +10,7 @@ from wtforms.validators import InputRequired
 from PIL import Image
 from torchvision import transforms
 import io
+import time
 
 # Import existing AdaIN code
 from utils.models import VGGEncoder, Decoder
@@ -21,6 +22,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecretkey'
 app.config['UPLOAD_FOLDER'] = str(BASE_DIR / 'static' / 'uploads')
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
+app.config['MAX_CONTENT_LENGTH'] = 8 * 1024 * 1024
 Bootstrap(app)
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -33,6 +35,7 @@ class UploadForm(FlaskForm):
     alpha = FloatField('Alpha', default=1.0)
     submit = SubmitField('Transfer Style')
 
+torch.set_num_threads(1)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 vgg_path = BASE_DIR / 'vgg_normalised.pth'
@@ -50,12 +53,12 @@ def allowed_file(filename):
 
 def style_transfer(content_image, style_image, encoder, decoder, alpha, device):
     content_transform = transforms.Compose([
-        transforms.Resize(512),
+        transforms.Resize(256),
         transforms.ToTensor()
     ])
 
     style_transform = transforms.Compose([
-        transforms.Resize(512),
+        transforms.Resize(256),
         transforms.ToTensor()
     ])
 
@@ -93,7 +96,7 @@ def index():
     if form.validate_on_submit():
         if form.content.data and form.content.data.filename:
             if allowed_file(form.content.data.filename):
-                content_filename = secure_filename(form.content.data.filename)
+                content_filename = f"{int(time.time())}_content_{secure_filename(form.content.data.filename)}"
                 form.content.data.save(os.path.join(app.config['UPLOAD_FOLDER'], content_filename))
                 form.content_path.data = content_filename
 
@@ -102,7 +105,7 @@ def index():
 
         if form.style.data and form.style.data.filename:
             if allowed_file(form.style.data.filename):
-                style_filename = secure_filename(form.style.data.filename)
+                style_filename = f"{int(time.time())}_style_{secure_filename(form.style.data.filename)}"
                 form.style.data.save(os.path.join(app.config['UPLOAD_FOLDER'], style_filename))
                 form.style_path.data = style_filename
 
@@ -120,7 +123,7 @@ def index():
                 alpha = float(form.alpha.data)
                 stylized_image = style_transfer(content_image, style_image, encoder, decoder, alpha, device)
 
-                result_filename = 'stylized' + content_filename
+                result_filename = f"stylized_{content_filename}"
                 result_path = os.path.join(app.config['UPLOAD_FOLDER'], result_filename)
                 save_image(stylized_image, result_path)
                 result_image = result_filename
@@ -146,6 +149,8 @@ def send_example(filename):
 if __name__ == '__main__':
     from werkzeug.serving import run_simple
     run_simple('localhost', 5000, app, use_reloader=True)
+
+
 
 
 
