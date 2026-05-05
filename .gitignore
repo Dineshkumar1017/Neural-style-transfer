@@ -1,0 +1,10 @@
+__pycache__/
+*.pth
+content_data/
+style_data/
+wikiart_style/
+experiment/
+static/uploads/
+venv/
+.env
+.vscode/
