@@ -15,9 +15,11 @@ import io
 from utils.models import VGGEncoder, Decoder
 from utils.utils import adaptive_instance_normalization, calc_mean_std
 
+BASE_DIR = Path(__file__).resolve().parent
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'supersecretkey'
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['UPLOAD_FOLDER'] = str(BASE_DIR / 'static' / 'uploads')
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
 Bootstrap(app)
 
@@ -33,9 +35,10 @@ class UploadForm(FlaskForm):
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-encoder = VGGEncoder(r'C:\Users\DINESH KUMAR\Desktop\NST\vgg_normalised.pth').to(device)
+vgg_path = BASE_DIR / 'vgg_normalised.pth'
+encoder = VGGEncoder(str(vgg_path)).to(device)
 decoder = Decoder().to(device)
-decoder_path = Path(r'C:\Users\DINESH KUMAR\Desktop\NST\experiment\final_exp\decoder_9.pth')
+decoder_path = BASE_DIR / 'experiment' / 'final_exp' / 'decoder_9.pth'
 decoder.load_state_dict(torch.load(decoder_path, map_location=device))
 
 encoder.eval()
@@ -138,10 +141,11 @@ def send_image(filename):
 
 @app.route('/examples/<path:filename>')
 def send_example(filename):
-    return send_from_directory('examples', filename)
+    return send_from_directory(BASE_DIR / 'examples', filename)
 
 if __name__ == '__main__':
     from werkzeug.serving import run_simple
     run_simple('localhost', 5000, app, use_reloader=True)
+
 
 
